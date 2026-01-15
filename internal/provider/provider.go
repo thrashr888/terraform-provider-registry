@@ -1,0 +1,113 @@
+// Copyright (c) Paul Thrasher
+// SPDX-License-Identifier: MPL-2.0
+
+package provider
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/thrashr888/terraform-provider-registry/internal/datasources"
+)
+
+// Ensure RegistryProvider satisfies various provider interfaces.
+var _ provider.Provider = &RegistryProvider{}
+
+// RegistryProvider defines the provider implementation.
+type RegistryProvider struct {
+	version string
+}
+
+// RegistryProviderModel describes the provider data model.
+type RegistryProviderModel struct {
+	Host  types.String `tfsdk:"host"`
+	Token types.String `tfsdk:"token"`
+}
+
+// New returns a new provider factory function.
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &RegistryProvider{
+			version: version,
+		}
+	}
+}
+
+func (p *RegistryProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "registry"
+	resp.Version = p.version
+}
+
+func (p *RegistryProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Provider for querying the Terraform Registry API.",
+		Attributes: map[string]schema.Attribute{
+			"host": schema.StringAttribute{
+				Description: "The Terraform Registry host. Defaults to registry.terraform.io.",
+				Optional:    true,
+			},
+			"token": schema.StringAttribute{
+				Description: "API token for private registry authentication.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+		},
+	}
+}
+
+func (p *RegistryProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var config RegistryProviderModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Default host
+	host := "registry.terraform.io"
+	if !config.Host.IsNull() {
+		host = config.Host.ValueString()
+	}
+
+	// Create HTTP client
+	client := &RegistryClient{
+		Host:       host,
+		Token:      config.Token.ValueString(),
+		HTTPClient: &http.Client{},
+	}
+
+	// Make client available to data sources
+	resp.DataSourceData = client
+}
+
+func (p *RegistryProvider) Resources(ctx context.Context) []func() resource.Resource {
+	// This is a read-only provider, no resources
+	return []func() resource.Resource{}
+}
+
+func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		datasources.NewProviderDataSource,
+		datasources.NewProviderVersionsDataSource,
+		datasources.NewSearchDataSource,
+	}
+}
+
+// RegistryClient is the API client for Terraform Registry.
+type RegistryClient struct {
+	Host       string
+	Token      string
+	HTTPClient *http.Client
+}
+
+// BaseURL returns the base URL for the registry API.
+func (c *RegistryClient) BaseURL() string {
+	return "https://" + c.Host + "/v1"
+}
