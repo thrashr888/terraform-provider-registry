@@ -100,6 +100,8 @@ func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.
 		datasources.NewModuleDataSource,
 		datasources.NewModuleVersionsDataSource,
 		datasources.NewSearchDataSource,
+		datasources.NewProviderDocsDataSource,
+		datasources.NewPolicyLibraryDataSource,
 	}
 }
 
