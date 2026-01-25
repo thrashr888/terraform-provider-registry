@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/thrashr888/terraform-provider-registry/internal/client"
 	"github.com/thrashr888/terraform-provider-registry/internal/datasources"
 )
 
@@ -77,14 +78,14 @@ func (p *RegistryProvider) Configure(ctx context.Context, req provider.Configure
 	}
 
 	// Create HTTP client
-	client := &RegistryClient{
+	registryClient := &client.RegistryClient{
 		Host:       host,
 		Token:      config.Token.ValueString(),
 		HTTPClient: &http.Client{},
 	}
 
 	// Make client available to data sources
-	resp.DataSourceData = client
+	resp.DataSourceData = registryClient
 }
 
 func (p *RegistryProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -96,18 +97,9 @@ func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.
 	return []func() datasource.DataSource{
 		datasources.NewProviderDataSource,
 		datasources.NewProviderVersionsDataSource,
+		datasources.NewModuleDataSource,
+		datasources.NewModuleVersionsDataSource,
 		datasources.NewSearchDataSource,
 	}
 }
 
-// RegistryClient is the API client for Terraform Registry.
-type RegistryClient struct {
-	Host       string
-	Token      string
-	HTTPClient *http.Client
-}
-
-// BaseURL returns the base URL for the registry API.
-func (c *RegistryClient) BaseURL() string {
-	return "https://" + c.Host + "/v1"
-}

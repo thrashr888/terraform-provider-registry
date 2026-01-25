@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/thrashr888/terraform-provider-registry/internal/client"
 )
 
 // Ensure ProviderDataSource satisfies various datasource interfaces.
@@ -20,7 +22,7 @@ var _ datasource.DataSourceWithConfigure = &ProviderDataSource{}
 
 // ProviderDataSource defines the data source implementation.
 type ProviderDataSource struct {
-	client *RegistryClient
+	client *client.RegistryClient
 }
 
 // ProviderDataSourceModel describes the data source data model.
@@ -95,16 +97,16 @@ func (d *ProviderDataSource) Configure(ctx context.Context, req datasource.Confi
 		return
 	}
 
-	client, ok := req.ProviderData.(*RegistryClient)
+	c, ok := req.ProviderData.(*client.RegistryClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *RegistryClient, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.RegistryClient, got: %T", req.ProviderData),
 		)
 		return
 	}
 
-	d.client = client
+	d.client = c
 }
 
 func (d *ProviderDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -160,40 +162,23 @@ func (d *ProviderDataSource) Read(ctx context.Context, req datasource.ReadReques
 	data.Tier = types.StringValue(apiResp.Tier)
 	data.PublishedAt = types.StringValue(apiResp.PublishedAt)
 	data.Downloads = types.Int64Value(apiResp.Downloads)
-	if len(apiResp.Versions) > 0 {
-		data.LatestVersion = types.StringValue(apiResp.Versions[0].Version)
-	}
+	// Use the version field from the response (it's the latest)
+	data.LatestVersion = types.StringValue(apiResp.Version)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 // ProviderAPIResponse represents the registry API response for a provider.
 type ProviderAPIResponse struct {
-	ID          string            `json:"id"`
-	Namespace   string            `json:"namespace"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Source      string            `json:"source"`
-	Tier        string            `json:"tier"`
-	PublishedAt string            `json:"published_at"`
-	Downloads   int64             `json:"downloads"`
-	Versions    []VersionResponse `json:"versions"`
+	ID          string   `json:"id"`
+	Namespace   string   `json:"namespace"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Source      string   `json:"source"`
+	Tier        string   `json:"tier"`
+	PublishedAt string   `json:"published_at"`
+	Downloads   int64    `json:"downloads"`
+	Versions    []string `json:"versions"`
 }
 
-// VersionResponse represents a provider version.
-type VersionResponse struct {
-	Version     string `json:"version"`
-	PublishedAt string `json:"published_at"`
-}
-
-// RegistryClient is imported from provider package.
-type RegistryClient struct {
-	Host       string
-	Token      string
-	HTTPClient *http.Client
-}
-
-// BaseURL returns the base URL for the registry API.
-func (c *RegistryClient) BaseURL() string {
-	return "https://" + c.Host + "/v1"
-}

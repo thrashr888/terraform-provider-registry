@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/thrashr888/terraform-provider-registry/internal/client"
 )
 
 // Ensure SearchDataSource satisfies various datasource interfaces.
@@ -22,7 +24,7 @@ var _ datasource.DataSourceWithConfigure = &SearchDataSource{}
 
 // SearchDataSource defines the data source implementation.
 type SearchDataSource struct {
-	client *RegistryClient
+	client *client.RegistryClient
 }
 
 // SearchDataSourceModel describes the data source data model.
@@ -125,16 +127,16 @@ func (d *SearchDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
-	client, ok := req.ProviderData.(*RegistryClient)
+	c, ok := req.ProviderData.(*client.RegistryClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *RegistryClient, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.RegistryClient, got: %T", req.ProviderData),
 		)
 		return
 	}
 
-	d.client = client
+	d.client = c
 }
 
 func (d *SearchDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

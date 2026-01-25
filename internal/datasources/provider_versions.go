@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/thrashr888/terraform-provider-registry/internal/client"
 )
 
 // Ensure ProviderVersionsDataSource satisfies various datasource interfaces.
@@ -21,7 +23,7 @@ var _ datasource.DataSourceWithConfigure = &ProviderVersionsDataSource{}
 
 // ProviderVersionsDataSource defines the data source implementation.
 type ProviderVersionsDataSource struct {
-	client *RegistryClient
+	client *client.RegistryClient
 }
 
 // ProviderVersionsDataSourceModel describes the data source data model.
@@ -88,16 +90,16 @@ func (d *ProviderVersionsDataSource) Configure(ctx context.Context, req datasour
 		return
 	}
 
-	client, ok := req.ProviderData.(*RegistryClient)
+	c, ok := req.ProviderData.(*client.RegistryClient)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *RegistryClient, got: %T", req.ProviderData),
+			fmt.Sprintf("Expected *client.RegistryClient, got: %T", req.ProviderData),
 		)
 		return
 	}
 
-	d.client = client
+	d.client = c
 }
 
 func (d *ProviderVersionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
