@@ -1,6 +1,6 @@
 ---
 page_title: "registry_module_versions Data Source - terraform-provider-registry"
-subcategory: "Modules"
+subcategory: ""
 description: |-
   Lists available versions for a Terraform module.
 ---
