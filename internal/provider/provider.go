@@ -97,6 +97,7 @@ func (p *RegistryProvider) Resources(ctx context.Context) []func() resource.Reso
 	return []func() resource.Resource{
 		resources.NewProviderResource,
 		resources.NewModuleResource,
+		resources.NewPolicyLibraryResource,
 	}
 }
 
@@ -104,6 +105,7 @@ func (p *RegistryProvider) ListResources(ctx context.Context) []func() list.List
 	return []func() list.ListResource{
 		listresources.NewProviderListResource,
 		listresources.NewModuleListResource,
+		listresources.NewPolicyLibraryListResource,
 	}
 }
 
@@ -116,6 +118,7 @@ func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.
 		datasources.NewSearchDataSource,
 		datasources.NewProviderDocsDataSource,
 		datasources.NewPolicyLibraryDataSource,
+		datasources.NewPolicyLibraryVersionsDataSource,
 	}
 }
 
