@@ -1,0 +1,16 @@
+---
+page_title: "registry_module_versions Data Source - terraform-provider-registry"
+subcategory: "Modules"
+description: |-
+  Lists available versions for a Terraform module.
+---
+
+# registry_module_versions (Data Source)
+
+Lists all available versions for a Terraform module, including submodules, provider dependencies, and module dependencies for each version.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_module_versions/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}

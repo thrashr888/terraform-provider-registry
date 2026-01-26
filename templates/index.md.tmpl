@@ -1,0 +1,34 @@
+---
+page_title: "registry Provider"
+description: |-
+  Query the Terraform Registry API for provider, module, and policy metadata.
+---
+
+# Registry Provider
+
+The Registry provider enables you to query the [Terraform Registry](https://registry.terraform.io) API to retrieve metadata about providers, modules, and policy libraries. This is a **read-only** provider - it queries registry data but does not manage any resources.
+
+## Use Cases
+
+- **Documentation Generation** - Pull resource schemas and docs into your own systems
+- **Compliance Checking** - Verify which provider/module versions are available
+- **Dependency Analysis** - Understand what resources a provider offers
+- **Tooling Integration** - Build tools that need registry metadata
+- **Version Pinning Automation** - Discover latest versions programmatically
+
+## Example Usage
+
+{{ tffile "examples/provider/main.tf" }}
+
+## Private Registry Support
+
+For private registries (like Terraform Cloud/Enterprise), configure the `host` and `token`:
+
+```terraform
+provider "registry" {
+  host  = "app.terraform.io"
+  token = var.tfc_token
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

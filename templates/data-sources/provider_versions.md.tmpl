@@ -1,0 +1,16 @@
+---
+page_title: "registry_provider_versions Data Source - terraform-provider-registry"
+subcategory: "Providers"
+description: |-
+  Lists available versions for a Terraform provider.
+---
+
+# registry_provider_versions (Data Source)
+
+Lists all available versions for a Terraform provider, including version strings, supported protocol versions, and publication dates. Useful for version constraint validation and discovering available releases.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_provider_versions/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}

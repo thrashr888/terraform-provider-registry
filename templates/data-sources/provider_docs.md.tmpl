@@ -1,0 +1,23 @@
+---
+page_title: "registry_provider_docs Data Source - terraform-provider-registry"
+subcategory: "Documentation"
+description: |-
+  Fetches documentation for a Terraform provider resource or data source.
+---
+
+# registry_provider_docs (Data Source)
+
+Fetches the markdown documentation for a specific resource, data source, or guide from a Terraform provider. Useful for building documentation aggregation tools or including provider docs in your own systems.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_provider_docs/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Document Types
+
+The `doc_type` attribute accepts:
+- `resources` - Resource documentation (e.g., `aws_instance`)
+- `data-sources` - Data source documentation (e.g., `aws_ami`)
+- `guides` - Guide documentation

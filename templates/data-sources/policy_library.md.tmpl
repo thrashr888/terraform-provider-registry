@@ -1,0 +1,24 @@
+---
+page_title: "registry_policy_library Data Source - terraform-provider-registry"
+subcategory: "Policies"
+description: |-
+  Fetches information about a Sentinel or OPA policy library from the registry.
+---
+
+# registry_policy_library (Data Source)
+
+Fetches information about a Sentinel or OPA policy library from the Terraform Registry. Policy libraries contain pre-written policies for compliance and governance.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_policy_library/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Common Policy Libraries
+
+HashiCorp maintains several policy libraries:
+- `CIS-Policy-Set-for-AWS-Terraform` - CIS benchmarks for AWS
+- `aws-networking-terraform` - AWS networking policies
+- `gcp-compute-terraform` - GCP compute policies
+- `azure-storage-terraform` - Azure storage policies

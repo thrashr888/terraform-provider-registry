@@ -1,0 +1,16 @@
+---
+page_title: "registry_module Data Source - terraform-provider-registry"
+subcategory: "Modules"
+description: |-
+  Fetches information about a Terraform module from the registry.
+---
+
+# registry_module (Data Source)
+
+Fetches information about a Terraform module from the registry, including its description, source repository, verification status, latest version, and download count.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_module/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}

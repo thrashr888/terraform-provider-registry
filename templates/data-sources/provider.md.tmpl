@@ -1,0 +1,16 @@
+---
+page_title: "registry_provider Data Source - terraform-provider-registry"
+subcategory: "Providers"
+description: |-
+  Fetches information about a Terraform provider from the registry.
+---
+
+# registry_provider (Data Source)
+
+Fetches information about a Terraform provider from the registry, including its description, tier (official/partner/community), latest version, download count, and source repository.
+
+## Example Usage
+
+{{ tffile "examples/data-sources/registry_provider/main.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
