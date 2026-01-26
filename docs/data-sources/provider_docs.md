@@ -1,6 +1,6 @@
 ---
 page_title: "registry_provider_docs Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Documentation"
 description: |-
   Fetches documentation for a Terraform provider resource or data source.
 ---

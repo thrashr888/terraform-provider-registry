@@ -1,6 +1,6 @@
 ---
 page_title: "registry_policy_library Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Policies"
 description: |-
   Fetches information about a Sentinel or OPA policy library from the registry.
 ---

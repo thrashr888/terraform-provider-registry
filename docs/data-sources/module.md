@@ -1,6 +1,6 @@
 ---
 page_title: "registry_module Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Modules"
 description: |-
   Fetches information about a Terraform module from the registry.
 ---

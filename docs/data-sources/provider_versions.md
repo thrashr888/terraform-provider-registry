@@ -1,6 +1,6 @@
 ---
 page_title: "registry_provider_versions Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Providers"
 description: |-
   Lists available versions for a Terraform provider.
 ---

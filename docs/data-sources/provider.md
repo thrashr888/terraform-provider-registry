@@ -1,6 +1,6 @@
 ---
 page_title: "registry_provider Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Providers"
 description: |-
   Fetches information about a Terraform provider from the registry.
 ---

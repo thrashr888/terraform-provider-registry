@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -15,10 +16,13 @@ import (
 
 	"github.com/thrashr888/terraform-provider-registry/internal/client"
 	"github.com/thrashr888/terraform-provider-registry/internal/datasources"
+	"github.com/thrashr888/terraform-provider-registry/internal/listresources"
+	"github.com/thrashr888/terraform-provider-registry/internal/resources"
 )
 
 // Ensure RegistryProvider satisfies various provider interfaces.
 var _ provider.Provider = &RegistryProvider{}
+var _ provider.ProviderWithListResources = &RegistryProvider{}
 
 // RegistryProvider defines the provider implementation.
 type RegistryProvider struct {
@@ -84,13 +88,23 @@ func (p *RegistryProvider) Configure(ctx context.Context, req provider.Configure
 		HTTPClient: &http.Client{},
 	}
 
-	// Make client available to data sources
+	// Make client available to data sources, resources, and list resources
 	resp.DataSourceData = registryClient
+	resp.ResourceData = registryClient
 }
 
 func (p *RegistryProvider) Resources(ctx context.Context) []func() resource.Resource {
-	// This is a read-only provider, no resources
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		resources.NewProviderResource,
+		resources.NewModuleResource,
+	}
+}
+
+func (p *RegistryProvider) ListResources(ctx context.Context) []func() list.ListResource {
+	return []func() list.ListResource{
+		listresources.NewProviderListResource,
+		listresources.NewModuleListResource,
+	}
 }
 
 func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.DataSource {

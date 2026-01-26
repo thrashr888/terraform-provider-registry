@@ -1,6 +1,6 @@
 ---
 page_title: "registry_search Data Source - terraform-provider-registry"
-subcategory: ""
+subcategory: "Search"
 description: |-
   Search the Terraform Registry for providers or modules.
 ---
