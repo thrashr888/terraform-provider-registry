@@ -13,7 +13,7 @@ import (
 )
 
 // Run "go generate" to generate the documentation
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
+//go:generate tfplugindocs generate
 
 var (
 	version string = "dev"
