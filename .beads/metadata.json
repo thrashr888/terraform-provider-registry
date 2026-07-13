@@ -1,4 +1,7 @@
 {
-  "database": "beads.db",
-  "jsonl_export": "issues.jsonl"
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "terraform_provider_registry",
+  "project_id": "13cd34be-88b6-48b3-8949-3567a872b173"
 }
