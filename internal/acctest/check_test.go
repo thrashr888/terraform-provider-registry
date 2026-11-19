@@ -55,6 +55,10 @@ output "not_satisfied" {
   value = provider::registry::version_satisfies("7.0.0", "~> 6.0")
 }
 `,
+				// Data sources scoped to a check block are always read during
+				// apply ("config will be reloaded to verify a check block"), so
+				// the plan after apply is never empty.
+				ExpectNonEmptyPlan: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckOutput("satisfied", "true"),
 					resource.TestCheckOutput("not_satisfied", "false"),
