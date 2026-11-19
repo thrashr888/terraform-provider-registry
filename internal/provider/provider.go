@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/thrashr888/terraform-provider-registry/internal/client"
 	"github.com/thrashr888/terraform-provider-registry/internal/datasources"
+	"github.com/thrashr888/terraform-provider-registry/internal/functions"
 	"github.com/thrashr888/terraform-provider-registry/internal/listresources"
 	"github.com/thrashr888/terraform-provider-registry/internal/resources"
 )
@@ -22,6 +24,7 @@ import (
 // Ensure RegistryProvider satisfies various provider interfaces.
 var _ provider.Provider = &RegistryProvider{}
 var _ provider.ProviderWithListResources = &RegistryProvider{}
+var _ provider.ProviderWithFunctions = &RegistryProvider{}
 
 // RegistryProvider defines the provider implementation.
 type RegistryProvider struct {
@@ -86,6 +89,7 @@ func (p *RegistryProvider) Configure(ctx context.Context, req provider.Configure
 	// Make client available to data sources, resources, and list resources
 	resp.DataSourceData = registryClient
 	resp.ResourceData = registryClient
+	resp.ListResourceData = registryClient
 }
 
 func (p *RegistryProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -114,5 +118,11 @@ func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.
 		datasources.NewProviderDocsDataSource,
 		datasources.NewPolicyLibraryDataSource,
 		datasources.NewPolicyLibraryVersionsDataSource,
+	}
+}
+
+func (p *RegistryProvider) Functions(ctx context.Context) []func() function.Function {
+	return []func() function.Function{
+		functions.NewVersionSatisfiesFunction,
 	}
 }

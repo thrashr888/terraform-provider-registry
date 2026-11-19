@@ -47,7 +47,8 @@ terraform-provider-registry/
 │   │                          # _policy_library, _policy_library_versions
 │   ├── resources/             # Read-only, importable registry_provider,
 │   │                          # registry_module, registry_policy_library
-│   ├── listresources/         # List resources for Terraform 1.14+ list blocks
+│   ├── listresources/         # List resources for terraform query (Terraform Search, 1.14+)
+│   ├── functions/             # Provider functions (version_satisfies)
 │   └── acctest/               # Acceptance tests (TF_ACC=1)
 ├── examples/                  # Example configurations (used by tfplugindocs)
 ├── templates/                 # Doc templates
@@ -70,7 +71,12 @@ terraform-provider-registry/
 
 ## Resources
 
-`registry_provider`, `registry_module` and `registry_policy_library` are read-only. Import IDs are `namespace/name` (module: `namespace/name/provider`), parsed by `parseImportID` in `internal/resources/import_id.go`.
+`registry_provider`, `registry_module` and `registry_policy_library` are read-only. Import IDs are `namespace/name` (module: `namespace/name/provider`), parsed by `parseImportID` in `internal/resources/import_id.go`. Each resource also has an identity schema (`internal/resources/identity.go`); `terraform query` needs it, and list resources set the same identity models. Set identity wherever state is set.
+
+## Terraform Search and checks
+
+- List resources must get the client from `ListResourceData` in provider `Configure`, and set `result.Resource` with the resource's model struct.
+- `provider::registry::version_satisfies` is for `check` block assertions; guides live in `templates/guides/`.
 
 ## Development Workflow
 

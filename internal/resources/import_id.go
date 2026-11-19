@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // parseImportID splits an import ID such as "hashicorp/aws" into exactly
@@ -28,16 +29,39 @@ func parseImportID(id string, fields ...string) ([]string, error) {
 	return parts, nil
 }
 
-// importByID parses req.ID into the named attributes and also stores the full
-// ID, so Read has everything it needs to look the object up in the registry.
+// importByID imports from either an import ID such as "hashicorp/aws" or,
+// on Terraform 1.12+, an import block's identity. It sets the full ID, each
+// named attribute and the identity, so Read has everything it needs.
 func importByID(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse, fields ...string) {
-	parts, err := parseImportID(req.ID, fields...)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid Import ID", err.Error())
-		return
+	var parts []string
+	if req.ID != "" || req.Identity == nil {
+		var err error
+		parts, err = parseImportID(req.ID, fields...)
+		if err != nil {
+			resp.Diagnostics.AddError("Invalid Import ID", err.Error())
+			return
+		}
+	} else {
+		parts = make([]string, len(fields))
+		for i, field := range fields {
+			var v types.String
+			resp.Diagnostics.Append(req.Identity.GetAttribute(ctx, path.Root(field), &v)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			if v.ValueString() == "" {
+				resp.Diagnostics.AddError("Invalid Import Identity", fmt.Sprintf("identity attribute %q must be set", field))
+				return
+			}
+			parts[i] = v.ValueString()
+		}
 	}
+
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), strings.Join(parts, "/"))...)
 	for i, field := range fields {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(field), parts[i])...)
+		if resp.Identity != nil {
+			resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root(field), parts[i])...)
+		}
 	}
 }

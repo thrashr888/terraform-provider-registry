@@ -16,3 +16,13 @@ list "registry_module" "aws_modules_aws" {
     target_provider = "aws"
   }
 }
+
+# Search modules by text
+list "registry_module" "vpc" {
+  provider = registry
+
+  config {
+    query           = "vpc"
+    target_provider = "aws"
+  }
+}

@@ -16,3 +16,12 @@ list "registry_provider" "hashicorp_official" {
     tier      = "official"
   }
 }
+
+# Search providers by text
+list "registry_provider" "kubernetes" {
+  provider = registry
+
+  config {
+    query = "kubernetes"
+  }
+}

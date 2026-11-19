@@ -53,9 +53,38 @@ Read-only resources for tracking registry objects in Terraform state. Creating o
 terraform import registry_provider.aws hashicorp/aws
 ```
 
-## List Resources
+## Terraform Search
 
-With Terraform 1.14 or later, `registry_provider`, `registry_module` and `registry_policy_library` can also be used in `list` blocks to find and bulk import registry objects. See [docs/list-resources](./docs/list-resources).
+With Terraform 1.14 or later, `registry_provider`, `registry_module` and `registry_policy_library` work in `list` blocks with `terraform query`. Search providers and modules by text with `query`, or list a `namespace`. `terraform query -generate-config-out=generated.tf` writes import blocks for the results. See the [Terraform Search guide](./docs/guides/terraform-search.md) and [examples/search](./examples/search).
+
+```hcl
+# search.tfquery.hcl
+list "registry_module" "aws_vpc" {
+  provider = registry
+  config {
+    query           = "vpc"
+    target_provider = "aws"
+  }
+}
+```
+
+## Checks
+
+Data sources and the `provider::registry::version_satisfies(version, constraint)` function work in `check` blocks, so `plan`, `apply` and HCP Terraform health assessments warn you about registry changes. See the [check blocks guide](./docs/guides/check-blocks.md) and [examples/checks](./examples/checks).
+
+```hcl
+check "aws_constraint_covers_latest" {
+  data "registry_provider" "aws" {
+    namespace = "hashicorp"
+    name      = "aws"
+  }
+
+  assert {
+    condition     = provider::registry::version_satisfies(data.registry_provider.aws.latest_version, "~> 6.0")
+    error_message = "hashicorp/aws ${data.registry_provider.aws.latest_version} is out and ~> 6.0 won't pick it up."
+  }
+}
+```
 
 ## Quick Start
 
