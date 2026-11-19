@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/thrashr888/terraform-provider-registry/internal/client"
+	"github.com/thrashr888/terraform-provider-registry/internal/resources"
 )
 
 // Ensure ModuleListResource satisfies various list resource interfaces.
@@ -30,14 +31,8 @@ type ModuleListResource struct {
 
 // ModuleListConfigModel describes the config model for the list block.
 type ModuleListConfigModel struct {
+	Query          types.String `tfsdk:"query"`
 	Namespace      types.String `tfsdk:"namespace"`
-	TargetProvider types.String `tfsdk:"target_provider"`
-}
-
-// ModuleIdentityModel describes the identity of a listed module.
-type ModuleIdentityModel struct {
-	Namespace      types.String `tfsdk:"namespace"`
-	Name           types.String `tfsdk:"name"`
 	TargetProvider types.String `tfsdk:"target_provider"`
 }
 
@@ -52,11 +47,15 @@ func (r *ModuleListResource) Metadata(ctx context.Context, req resource.Metadata
 
 func (r *ModuleListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lists Terraform modules from the registry by namespace.",
+		Description: "Lists or searches Terraform modules in the registry. Set `query` to search by text, `namespace` to list a namespace, or both.",
 		Attributes: map[string]schema.Attribute{
+			"query": schema.StringAttribute{
+				Description: "Text to search for (e.g., vpc). At least one of `query` or `namespace` is required.",
+				Optional:    true,
+			},
 			"namespace": schema.StringAttribute{
-				Description: "Module namespace to filter by (e.g., terraform-aws-modules).",
-				Required:    true,
+				Description: "Module namespace to filter by (e.g., terraform-aws-modules). At least one of `query` or `namespace` is required.",
+				Optional:    true,
 			},
 			"target_provider": schema.StringAttribute{
 				Description: "Target provider to filter by (e.g., aws).",
@@ -92,8 +91,19 @@ func (r *ModuleListResource) List(ctx context.Context, req list.ListRequest, res
 		return
 	}
 
-	// Fetch modules from registry v2 API
-	modules, err := r.fetchModules(ctx, config.Namespace.ValueString(), config.TargetProvider.ValueString(), int(req.Limit))
+	if config.Query.ValueString() == "" && config.Namespace.ValueString() == "" {
+		diags.AddError("Missing Search Criteria", "Set at least one of query or namespace.")
+		resp.Results = list.ListResultsStreamDiagnostics(diags)
+		return
+	}
+
+	var modules []ModuleAPIItem
+	var err error
+	if config.Query.ValueString() != "" {
+		modules, err = r.searchModules(ctx, config.Query.ValueString(), config.Namespace.ValueString(), config.TargetProvider.ValueString(), int(req.Limit))
+	} else {
+		modules, err = r.fetchModules(ctx, config.Namespace.ValueString(), config.TargetProvider.ValueString(), int(req.Limit))
+	}
 	if err != nil {
 		diags.AddError("Registry API Error", err.Error())
 		resp.Results = list.ListResultsStreamDiagnostics(diags)
@@ -107,7 +117,7 @@ func (r *ModuleListResource) List(ctx context.Context, req list.ListRequest, res
 			result.DisplayName = fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.TargetProvider)
 
 			// Set identity
-			identity := ModuleIdentityModel{
+			identity := resources.ModuleIdentityModel{
 				Namespace:      types.StringValue(m.Namespace),
 				Name:           types.StringValue(m.Name),
 				TargetProvider: types.StringValue(m.TargetProvider),
@@ -116,15 +126,15 @@ func (r *ModuleListResource) List(ctx context.Context, req list.ListRequest, res
 
 			// Set resource if requested
 			if req.IncludeResource {
-				resourceData := map[string]interface{}{
-					"id":              fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.TargetProvider),
-					"namespace":       m.Namespace,
-					"name":            m.Name,
-					"target_provider": m.TargetProvider,
-					"description":     "",
-					"source":          m.Source,
-					"verified":        m.Verified,
-					"downloads":       m.Downloads,
+				resourceData := resources.ModuleResourceModel{
+					ID:             types.StringValue(fmt.Sprintf("%s/%s/%s", m.Namespace, m.Name, m.TargetProvider)),
+					Namespace:      types.StringValue(m.Namespace),
+					Name:           types.StringValue(m.Name),
+					TargetProvider: types.StringValue(m.TargetProvider),
+					Description:    types.StringValue(m.Description),
+					Source:         types.StringValue(m.Source),
+					Verified:       types.BoolValue(m.Verified),
+					Downloads:      types.Int64Value(m.Downloads),
 				}
 				result.Diagnostics.Append(result.Resource.Set(ctx, resourceData)...)
 			}
@@ -141,6 +151,7 @@ type ModuleAPIItem struct {
 	Namespace      string
 	Name           string
 	TargetProvider string
+	Description    string
 	Source         string
 	Verified       bool
 	Downloads      int64
@@ -186,6 +197,7 @@ func (r *ModuleListResource) fetchModules(ctx context.Context, namespace, target
 				Name         string `json:"name"`
 				Namespace    string `json:"namespace"`
 				ProviderName string `json:"provider-name"`
+				Description  string `json:"description"`
 				Source       string `json:"source"`
 				Verified     bool   `json:"verified"`
 				Downloads    int64  `json:"downloads"`
@@ -203,11 +215,57 @@ func (r *ModuleListResource) fetchModules(ctx context.Context, namespace, target
 			Namespace:      m.Attributes.Namespace,
 			Name:           m.Attributes.Name,
 			TargetProvider: m.Attributes.ProviderName,
+			Description:    m.Attributes.Description,
 			Source:         m.Attributes.Source,
 			Verified:       m.Attributes.Verified,
 			Downloads:      m.Attributes.Downloads,
 		})
 	}
 
+	return modules, nil
+}
+
+// searchModules runs a text search with the v1 modules search endpoint.
+func (r *ModuleListResource) searchModules(ctx context.Context, q, namespace, targetProvider string, limit int) ([]ModuleAPIItem, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+	query := url.Values{}
+	query.Set("q", q)
+	query.Set("limit", strconv.Itoa(limit))
+	if namespace != "" {
+		query.Set("namespace", namespace)
+	}
+	if targetProvider != "" {
+		query.Set("provider", targetProvider)
+	}
+
+	var apiResp struct {
+		Modules []struct {
+			Namespace   string `json:"namespace"`
+			Name        string `json:"name"`
+			Provider    string `json:"provider"`
+			Description string `json:"description"`
+			Source      string `json:"source"`
+			Verified    bool   `json:"verified"`
+			Downloads   int64  `json:"downloads"`
+		} `json:"modules"`
+	}
+	if err := getJSON(ctx, r.client, fmt.Sprintf("%s/modules/search?%s", r.client.BaseURL(), query.Encode()), &apiResp); err != nil {
+		return nil, err
+	}
+
+	modules := make([]ModuleAPIItem, 0, len(apiResp.Modules))
+	for _, m := range apiResp.Modules {
+		modules = append(modules, ModuleAPIItem{
+			Namespace:      m.Namespace,
+			Name:           m.Name,
+			TargetProvider: m.Provider,
+			Description:    m.Description,
+			Source:         m.Source,
+			Verified:       m.Verified,
+			Downloads:      m.Downloads,
+		})
+	}
 	return modules, nil
 }

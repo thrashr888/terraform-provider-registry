@@ -1,0 +1,26 @@
+---
+page_title: "Registry checks with check blocks"
+subcategory: ""
+description: |-
+  Use registry data and the version_satisfies function in Terraform check blocks.
+---
+
+# Registry checks with check blocks
+
+[Check blocks](https://developer.hashicorp.com/terraform/language/block/check) validate your infrastructure on every `plan` and `apply` without blocking them. A failed assertion is a warning. On HCP Terraform, health assessments run them continuously and alert you when one fails.
+
+This provider makes registry facts available to check blocks:
+
+- A data source scoped inside a `check` block reads the registry each run. If the read fails, Terraform shows a warning instead of failing the run.
+- `provider::registry::version_satisfies(version, constraint)` tests a version against the same constraint syntax as `required_providers` (Terraform 1.8+).
+
+## Examples
+
+{{ tffile "examples/checks/main.tf" }}
+
+## Ideas
+
+- Warn when a new major version of a provider is out that your constraint won't pick up.
+- Warn when a pinned module version is withdrawn from the registry.
+- Require verified modules, or official and partner providers.
+- Use the `registry_search` data source to check that an internal module is published in your private registry (set `host` and `token` on the provider).

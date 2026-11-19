@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/thrashr888/terraform-provider-registry/internal/client"
+	"github.com/thrashr888/terraform-provider-registry/internal/resources"
 )
 
 // Ensure ProviderListResource satisfies various list resource interfaces.
@@ -30,14 +31,9 @@ type ProviderListResource struct {
 
 // ProviderListConfigModel describes the config model for the list block.
 type ProviderListConfigModel struct {
+	Query     types.String `tfsdk:"query"`
 	Namespace types.String `tfsdk:"namespace"`
 	Tier      types.String `tfsdk:"tier"`
-}
-
-// ProviderIdentityModel describes the identity of a listed provider.
-type ProviderIdentityModel struct {
-	Namespace types.String `tfsdk:"namespace"`
-	Name      types.String `tfsdk:"name"`
 }
 
 // NewProviderListResource creates a new list resource.
@@ -51,11 +47,15 @@ func (r *ProviderListResource) Metadata(ctx context.Context, req resource.Metada
 
 func (r *ProviderListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lists Terraform providers from the registry by namespace.",
+		Description: "Lists or searches Terraform providers in the registry. Set `query` to search by text, `namespace` to list a namespace, or both.",
 		Attributes: map[string]schema.Attribute{
+			"query": schema.StringAttribute{
+				Description: "Text to search for (e.g., kubernetes). At least one of `query` or `namespace` is required.",
+				Optional:    true,
+			},
 			"namespace": schema.StringAttribute{
-				Description: "Provider namespace to filter by (e.g., hashicorp).",
-				Required:    true,
+				Description: "Provider namespace to filter by (e.g., hashicorp). At least one of `query` or `namespace` is required.",
+				Optional:    true,
 			},
 			"tier": schema.StringAttribute{
 				Description: "Provider tier to filter by (official, partner, community).",
@@ -91,8 +91,19 @@ func (r *ProviderListResource) List(ctx context.Context, req list.ListRequest, r
 		return
 	}
 
-	// Fetch providers from registry v2 API
-	providers, err := r.fetchProviders(ctx, config.Namespace.ValueString(), config.Tier.ValueString(), int(req.Limit))
+	if config.Query.ValueString() == "" && config.Namespace.ValueString() == "" {
+		diags.AddError("Missing Search Criteria", "Set at least one of query or namespace.")
+		resp.Results = list.ListResultsStreamDiagnostics(diags)
+		return
+	}
+
+	var providers []ProviderAPIItem
+	var err error
+	if config.Query.ValueString() != "" {
+		providers, err = r.searchProviders(ctx, config.Query.ValueString(), config.Namespace.ValueString(), config.Tier.ValueString(), int(req.Limit))
+	} else {
+		providers, err = r.fetchProviders(ctx, config.Namespace.ValueString(), config.Tier.ValueString(), int(req.Limit))
+	}
 	if err != nil {
 		diags.AddError("Registry API Error", err.Error())
 		resp.Results = list.ListResultsStreamDiagnostics(diags)
@@ -106,7 +117,7 @@ func (r *ProviderListResource) List(ctx context.Context, req list.ListRequest, r
 			result.DisplayName = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
 
 			// Set identity
-			identity := ProviderIdentityModel{
+			identity := resources.ProviderIdentityModel{
 				Namespace: types.StringValue(p.Namespace),
 				Name:      types.StringValue(p.Name),
 			}
@@ -114,16 +125,16 @@ func (r *ProviderListResource) List(ctx context.Context, req list.ListRequest, r
 
 			// Set resource if requested
 			if req.IncludeResource {
-				resourceData := map[string]interface{}{
-					"id":             fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-					"namespace":      p.Namespace,
-					"name":           p.Name,
-					"description":    p.Description,
-					"source":         p.Source,
-					"tier":           p.Tier,
-					"published_at":   "",
-					"downloads":      p.Downloads,
-					"latest_version": "",
+				resourceData := resources.ProviderResourceModel{
+					ID:            types.StringValue(fmt.Sprintf("%s/%s", p.Namespace, p.Name)),
+					Namespace:     types.StringValue(p.Namespace),
+					Name:          types.StringValue(p.Name),
+					Description:   types.StringValue(p.Description),
+					Source:        types.StringValue(p.Source),
+					Tier:          types.StringValue(p.Tier),
+					PublishedAt:   types.StringValue(p.PublishedAt),
+					Downloads:     types.Int64Value(p.Downloads),
+					LatestVersion: types.StringValue(p.Version),
 				}
 				result.Diagnostics.Append(result.Resource.Set(ctx, resourceData)...)
 			}
@@ -143,6 +154,8 @@ type ProviderAPIItem struct {
 	Source      string
 	Tier        string
 	Downloads   int64
+	Version     string
+	PublishedAt string
 }
 
 func (r *ProviderListResource) fetchProviders(ctx context.Context, namespace, tier string, limit int) ([]ProviderAPIItem, error) {
@@ -208,5 +221,52 @@ func (r *ProviderListResource) fetchProviders(ctx context.Context, namespace, ti
 		})
 	}
 
+	return providers, nil
+}
+
+// searchProviders runs a text search with the v1 providers endpoint.
+func (r *ProviderListResource) searchProviders(ctx context.Context, q, namespace, tier string, limit int) ([]ProviderAPIItem, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+	query := url.Values{}
+	query.Set("q", q)
+	query.Set("limit", strconv.Itoa(limit))
+	if namespace != "" {
+		query.Set("namespace", namespace)
+	}
+	if tier != "" {
+		query.Set("tier", tier)
+	}
+
+	var apiResp struct {
+		Providers []struct {
+			Namespace   string `json:"namespace"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Source      string `json:"source"`
+			Tier        string `json:"tier"`
+			Downloads   int64  `json:"downloads"`
+			Version     string `json:"version"`
+			PublishedAt string `json:"published_at"`
+		} `json:"providers"`
+	}
+	if err := getJSON(ctx, r.client, fmt.Sprintf("%s/providers?%s", r.client.BaseURL(), query.Encode()), &apiResp); err != nil {
+		return nil, err
+	}
+
+	providers := make([]ProviderAPIItem, 0, len(apiResp.Providers))
+	for _, p := range apiResp.Providers {
+		providers = append(providers, ProviderAPIItem{
+			Namespace:   p.Namespace,
+			Name:        p.Name,
+			Description: p.Description,
+			Source:      p.Source,
+			Tier:        p.Tier,
+			Downloads:   p.Downloads,
+			Version:     p.Version,
+			PublishedAt: p.PublishedAt,
+		})
+	}
 	return providers, nil
 }

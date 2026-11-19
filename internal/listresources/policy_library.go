@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/thrashr888/terraform-provider-registry/internal/client"
+	"github.com/thrashr888/terraform-provider-registry/internal/resources"
 )
 
 // Ensure PolicyLibraryListResource satisfies various list resource interfaces.
@@ -31,12 +32,6 @@ type PolicyLibraryListResource struct {
 // PolicyLibraryListConfigModel describes the config model for the list block.
 type PolicyLibraryListConfigModel struct {
 	Namespace types.String `tfsdk:"namespace"`
-}
-
-// PolicyLibraryIdentityModel describes the identity of a listed policy library.
-type PolicyLibraryIdentityModel struct {
-	Namespace types.String `tfsdk:"namespace"`
-	Name      types.String `tfsdk:"name"`
 }
 
 // NewPolicyLibraryListResource creates a new list resource.
@@ -101,7 +96,7 @@ func (r *PolicyLibraryListResource) List(ctx context.Context, req list.ListReque
 			result.DisplayName = fmt.Sprintf("%s/%s", lib.Namespace, lib.Name)
 
 			// Set identity
-			identity := PolicyLibraryIdentityModel{
+			identity := resources.PolicyLibraryIdentityModel{
 				Namespace: types.StringValue(lib.Namespace),
 				Name:      types.StringValue(lib.Name),
 			}
@@ -109,14 +104,14 @@ func (r *PolicyLibraryListResource) List(ctx context.Context, req list.ListReque
 
 			// Set resource if requested
 			if req.IncludeResource {
-				resourceData := map[string]interface{}{
-					"id":        fmt.Sprintf("%s/%s", lib.Namespace, lib.Name),
-					"namespace": lib.Namespace,
-					"name":      lib.Name,
-					"title":     lib.Title,
-					"source":    lib.Source,
-					"verified":  lib.Verified,
-					"downloads": lib.Downloads,
+				resourceData := resources.PolicyLibraryResourceModel{
+					ID:        types.StringValue(fmt.Sprintf("%s/%s", lib.Namespace, lib.Name)),
+					Namespace: types.StringValue(lib.Namespace),
+					Name:      types.StringValue(lib.Name),
+					Title:     types.StringValue(lib.Title),
+					Source:    types.StringValue(lib.Source),
+					Verified:  types.BoolValue(lib.Verified),
+					Downloads: types.Int64Value(lib.Downloads),
 				}
 				result.Diagnostics.Append(result.Resource.Set(ctx, resourceData)...)
 			}

@@ -57,3 +57,17 @@ Import is supported using the following syntax:
 # Import a provider using namespace/name format
 terraform import registry_provider.aws hashicorp/aws
 ```
+
+With Terraform 1.12 or later you can also import with an `import` block that uses the resource identity:
+
+```terraform
+import {
+  to = registry_provider.aws
+  identity = {
+    name      = "aws"
+    namespace = "hashicorp"
+  }
+}
+```
+
+To find many objects and generate their import blocks, see the [Terraform Search guide](../guides/terraform-search).

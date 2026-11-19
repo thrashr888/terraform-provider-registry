@@ -25,3 +25,18 @@ Import is supported using the following syntax:
 # Import a module using namespace/name/provider format
 terraform import registry_module.vpc terraform-aws-modules/vpc/aws
 ```
+
+With Terraform 1.12 or later you can also import with an `import` block that uses the resource identity:
+
+```terraform
+import {
+  to = registry_module.vpc
+  identity = {
+    name            = "vpc"
+    namespace       = "terraform-aws-modules"
+    target_provider = "aws"
+  }
+}
+```
+
+To find many objects and generate their import blocks, see the [Terraform Search guide](../guides/terraform-search).

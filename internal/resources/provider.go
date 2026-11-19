@@ -22,6 +22,7 @@ import (
 var _ resource.Resource = &ProviderResource{}
 var _ resource.ResourceWithConfigure = &ProviderResource{}
 var _ resource.ResourceWithImportState = &ProviderResource{}
+var _ resource.ResourceWithIdentity = &ProviderResource{}
 
 // ProviderResource defines the resource implementation for registry providers.
 // This is a read-only resource that can only be imported, not created.
@@ -105,6 +106,10 @@ func (r *ProviderResource) Schema(ctx context.Context, req resource.SchemaReques
 	}
 }
 
+func (r *ProviderResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = namespaceNameIdentitySchema("Provider")
+}
+
 func (r *ProviderResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -137,6 +142,7 @@ func (r *ProviderResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ProviderIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *ProviderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -153,6 +159,7 @@ func (r *ProviderResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ProviderIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *ProviderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -170,6 +177,7 @@ func (r *ProviderResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ProviderIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *ProviderResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

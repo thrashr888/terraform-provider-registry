@@ -22,6 +22,7 @@ import (
 var _ resource.Resource = &ModuleResource{}
 var _ resource.ResourceWithConfigure = &ModuleResource{}
 var _ resource.ResourceWithImportState = &ModuleResource{}
+var _ resource.ResourceWithIdentity = &ModuleResource{}
 
 // ModuleResource defines the resource implementation for registry modules.
 // This is a read-only resource that can only be imported, not created.
@@ -103,6 +104,10 @@ func (r *ModuleResource) Schema(ctx context.Context, req resource.SchemaRequest,
 	}
 }
 
+func (r *ModuleResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = moduleIdentitySchema()
+}
+
 func (r *ModuleResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -135,6 +140,7 @@ func (r *ModuleResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ModuleIdentityModel{Namespace: data.Namespace, Name: data.Name, TargetProvider: data.TargetProvider})...)
 }
 
 func (r *ModuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -151,6 +157,7 @@ func (r *ModuleResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ModuleIdentityModel{Namespace: data.Namespace, Name: data.Name, TargetProvider: data.TargetProvider})...)
 }
 
 func (r *ModuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -168,6 +175,7 @@ func (r *ModuleResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, ModuleIdentityModel{Namespace: data.Namespace, Name: data.Name, TargetProvider: data.TargetProvider})...)
 }
 
 func (r *ModuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

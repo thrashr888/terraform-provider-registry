@@ -22,6 +22,7 @@ import (
 var _ resource.Resource = &PolicyLibraryResource{}
 var _ resource.ResourceWithConfigure = &PolicyLibraryResource{}
 var _ resource.ResourceWithImportState = &PolicyLibraryResource{}
+var _ resource.ResourceWithIdentity = &PolicyLibraryResource{}
 
 // PolicyLibraryResource defines the resource implementation for policy libraries.
 type PolicyLibraryResource struct {
@@ -94,6 +95,10 @@ func (r *PolicyLibraryResource) Schema(ctx context.Context, req resource.SchemaR
 	}
 }
 
+func (r *PolicyLibraryResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = namespaceNameIdentitySchema("Policy library")
+}
+
 func (r *PolicyLibraryResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -125,6 +130,7 @@ func (r *PolicyLibraryResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, PolicyLibraryIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *PolicyLibraryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -141,6 +147,7 @@ func (r *PolicyLibraryResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, PolicyLibraryIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *PolicyLibraryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -157,6 +164,7 @@ func (r *PolicyLibraryResource) Update(ctx context.Context, req resource.UpdateR
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, PolicyLibraryIdentityModel{Namespace: data.Namespace, Name: data.Name})...)
 }
 
 func (r *PolicyLibraryResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
