@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -179,8 +178,8 @@ func (r *ProviderResource) Delete(ctx context.Context, req resource.DeleteReques
 }
 
 func (r *ProviderResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Import ID should be "namespace/name"
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// Import ID is "namespace/name", e.g. "hashicorp/aws".
+	importByID(ctx, req, resp, "namespace", "name")
 }
 
 func (r *ProviderResource) readProvider(ctx context.Context, data *ProviderResourceModel) error {
@@ -212,7 +211,7 @@ func (r *ProviderResource) readProvider(ctx context.Context, data *ProviderResou
 	if err != nil {
 		return err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

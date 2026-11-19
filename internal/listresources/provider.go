@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/list/schema"
@@ -149,14 +151,15 @@ func (r *ProviderListResource) fetchProviders(ctx context.Context, namespace, ti
 	}
 
 	// Use v2 API for listing providers
-	url := fmt.Sprintf("https://%s/v2/providers?filter[namespace]=%s&page[size]=%d",
-		r.client.Host, namespace, limit)
-
+	query := url.Values{}
+	query.Set("filter[namespace]", namespace)
+	query.Set("page[size]", strconv.Itoa(limit))
 	if tier != "" {
-		url += fmt.Sprintf("&filter[tier]=%s", tier)
+		query.Set("filter[tier]", tier)
 	}
+	reqURL := fmt.Sprintf("https://%s/v2/providers?%s", r.client.Host, query.Encode())
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +172,7 @@ func (r *ProviderListResource) fetchProviders(ctx context.Context, namespace, ti
 	if err != nil {
 		return nil, err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

@@ -13,10 +13,12 @@ import (
 )
 
 // Run "go generate" to generate the documentation
-//go:generate tfplugindocs generate
+//go:generate go tool tfplugindocs generate
 
 var (
+	// version and commit are set by goreleaser at build time (see .goreleaser.yml ldflags).
 	version string = "dev"
+	commit  string = ""
 )
 
 func main() {
@@ -28,6 +30,10 @@ func main() {
 	opts := providerserver.ServeOpts{
 		Address: "registry.terraform.io/thrashr888/registry",
 		Debug:   debug,
+	}
+
+	if debug && commit != "" {
+		log.Printf("terraform-provider-registry %s (%s)", version, commit)
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(version), opts)

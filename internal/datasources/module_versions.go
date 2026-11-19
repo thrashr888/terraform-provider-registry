@@ -176,7 +176,7 @@ func (d *ModuleVersionsDataSource) Read(ctx context.Context, req datasource.Read
 		resp.Diagnostics.AddError("HTTP Error", err.Error())
 		return
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		resp.Diagnostics.AddError(
@@ -293,7 +293,7 @@ type ModuleVersionsAPIResponse struct {
 
 // ModuleVersionsModule represents a module in the versions response.
 type ModuleVersionsModule struct {
-	Source   string                       `json:"source"`
+	Source   string                        `json:"source"`
 	Versions []ModuleVersionDetailResponse `json:"versions"`
 }
 

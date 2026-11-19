@@ -136,8 +136,8 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Step 1: Get provider ID from v2 API
 	providerURL := fmt.Sprintf("https://%s/v2/providers/%s/%s",
 		d.client.Host,
-		data.Namespace.ValueString(),
-		data.Name.ValueString(),
+		url.PathEscape(data.Namespace.ValueString()),
+		url.PathEscape(data.Name.ValueString()),
 	)
 
 	providerResp, err := d.fetchJSON(ctx, providerURL)
@@ -151,12 +151,16 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("API Error", "Invalid provider response format")
 		return
 	}
-	providerID := providerData["id"].(string)
+	providerID := getStringOrEmpty(providerData, "id")
+	if providerID == "" {
+		resp.Diagnostics.AddError("API Error", "Provider response is missing an id")
+		return
+	}
 
 	// Step 2: Find the version ID
 	versionsURL := fmt.Sprintf("https://%s/v2/providers/%s/provider-versions",
 		d.client.Host,
-		providerID,
+		url.PathEscape(providerID),
 	)
 
 	versionsResp, err := d.fetchJSON(ctx, versionsURL)
@@ -174,10 +178,16 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	var versionID string
 	targetVersion := data.Version.ValueString()
 	for _, v := range versionsData {
-		vMap := v.(map[string]interface{})
-		attrs := vMap["attributes"].(map[string]interface{})
-		if attrs["version"].(string) == targetVersion {
-			versionID = vMap["id"].(string)
+		vMap, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		attrs, ok := vMap["attributes"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if getStringOrEmpty(attrs, "version") == targetVersion {
+			versionID = getStringOrEmpty(vMap, "id")
 			break
 		}
 	}
@@ -195,7 +205,7 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	docsURL := fmt.Sprintf("https://%s/v2/provider-docs?filter[provider-version]=%s&filter[category]=%s&filter[slug]=%s",
 		d.client.Host,
-		versionID,
+		url.QueryEscape(versionID),
 		url.QueryEscape(docType),
 		url.QueryEscape(docName),
 	)
@@ -214,11 +224,19 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	docMeta := docsData[0].(map[string]interface{})
-	docID := docMeta["id"].(string)
+	docMeta, ok := docsData[0].(map[string]interface{})
+	if !ok {
+		resp.Diagnostics.AddError("API Error", "Invalid docs response format")
+		return
+	}
+	docID := getStringOrEmpty(docMeta, "id")
+	if docID == "" {
+		resp.Diagnostics.AddError("API Error", "Docs response is missing an id")
+		return
+	}
 
 	// Step 4: Fetch the full doc content
-	docURL := fmt.Sprintf("https://%s/v2/provider-docs/%s", d.client.Host, docID)
+	docURL := fmt.Sprintf("https://%s/v2/provider-docs/%s", d.client.Host, url.PathEscape(docID))
 
 	docResp, err := d.fetchJSON(ctx, docURL)
 	if err != nil {
@@ -226,8 +244,16 @@ func (d *ProviderDocsDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	docData := docResp["data"].(map[string]interface{})
-	attrs := docData["attributes"].(map[string]interface{})
+	docData, ok := docResp["data"].(map[string]interface{})
+	if !ok {
+		resp.Diagnostics.AddError("API Error", "Invalid doc response format")
+		return
+	}
+	attrs, ok := docData["attributes"].(map[string]interface{})
+	if !ok {
+		resp.Diagnostics.AddError("API Error", "Doc response is missing attributes")
+		return
+	}
 
 	// Map response to model
 	data.ID = types.StringValue(docID)
@@ -255,7 +281,7 @@ func (d *ProviderDocsDataSource) fetchJSON(ctx context.Context, url string) (map
 	if err != nil {
 		return nil, err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

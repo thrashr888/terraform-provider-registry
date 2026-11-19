@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/list/schema"
@@ -142,10 +144,12 @@ func (r *PolicyLibraryListResource) fetchPolicyLibraries(ctx context.Context, na
 	}
 
 	// Use v2 API for listing policy libraries
-	url := fmt.Sprintf("https://%s/v2/policies?filter[namespace]=%s&page[size]=%d",
-		r.client.Host, namespace, limit)
+	query := url.Values{}
+	query.Set("filter[namespace]", namespace)
+	query.Set("page[size]", strconv.Itoa(limit))
+	reqURL := fmt.Sprintf("https://%s/v2/policies?%s", r.client.Host, query.Encode())
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +162,7 @@ func (r *PolicyLibraryListResource) fetchPolicyLibraries(ctx context.Context, na
 	if err != nil {
 		return nil, err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

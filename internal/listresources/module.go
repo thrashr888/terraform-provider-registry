@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/list/schema"
@@ -150,14 +152,15 @@ func (r *ModuleListResource) fetchModules(ctx context.Context, namespace, target
 	}
 
 	// Use v2 API for listing modules
-	url := fmt.Sprintf("https://%s/v2/modules?filter[namespace]=%s&page[size]=%d",
-		r.client.Host, namespace, limit)
-
+	query := url.Values{}
+	query.Set("filter[namespace]", namespace)
+	query.Set("page[size]", strconv.Itoa(limit))
 	if targetProvider != "" {
-		url += fmt.Sprintf("&filter[provider]=%s", targetProvider)
+		query.Set("filter[provider]", targetProvider)
 	}
+	reqURL := fmt.Sprintf("https://%s/v2/modules?%s", r.client.Host, query.Encode())
 
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +173,7 @@ func (r *ModuleListResource) fetchModules(ctx context.Context, namespace, target
 	if err != nil {
 		return nil, err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

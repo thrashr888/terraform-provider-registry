@@ -37,7 +37,25 @@ terraform {
 | `registry_module_versions` | List module versions | ✅ |
 | `registry_search` | Search providers/modules | ✅ |
 | `registry_policy_library` | Get policy library info | ✅ |
-| `registry_provider_schema` | Get resource schemas | 🔜 |
+| `registry_policy_library_versions` | List policy library versions | ✅ |
+
+## Resources
+
+Read-only resources for tracking registry objects in Terraform state. Creating one only reads the registry; destroying one only removes it from state.
+
+| Resource | Import ID |
+|----------|-----------|
+| `registry_provider` | `namespace/name`, e.g. `hashicorp/aws` |
+| `registry_module` | `namespace/name/provider`, e.g. `terraform-aws-modules/vpc/aws` |
+| `registry_policy_library` | `namespace/name`, e.g. `hashicorp/gcp-networking-terraform` |
+
+```shell
+terraform import registry_provider.aws hashicorp/aws
+```
+
+## List Resources
+
+With Terraform 1.14 or later, `registry_provider`, `registry_module` and `registry_policy_library` can also be used in `list` blocks to find and bulk import registry objects. See [docs/list-resources](./docs/list-resources).
 
 ## Quick Start
 
@@ -104,7 +122,7 @@ See the [examples](./examples) directory for complete usage examples:
 
 ## Documentation
 
-Full documentation is available in the [docs](./docs) directory and will be published to the Terraform Registry.
+Full documentation is published on the [Terraform Registry](https://registry.terraform.io/providers/thrashr888/registry/latest/docs) and lives in the [docs](./docs) directory, generated from [templates](./templates) and [examples](./examples).
 
 ## Development
 
@@ -115,10 +133,13 @@ go build -o terraform-provider-registry
 # Test
 go test ./...
 
-# Run acceptance tests
-TF_ACC=1 go test ./... -v
+# Lint
+golangci-lint run ./...
 
-# Generate documentation
+# Run acceptance tests (they call the live registry)
+TF_ACC=1 go test ./internal/acctest/... -v
+
+# Generate documentation (tfplugindocs is pinned with the go.mod tool directive)
 go generate ./...
 ```
 

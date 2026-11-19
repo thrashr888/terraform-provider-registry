@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -82,11 +81,7 @@ func (p *RegistryProvider) Configure(ctx context.Context, req provider.Configure
 	}
 
 	// Create HTTP client
-	registryClient := &client.RegistryClient{
-		Host:       host,
-		Token:      config.Token.ValueString(),
-		HTTPClient: &http.Client{},
-	}
+	registryClient := client.New(host, config.Token.ValueString(), p.version)
 
 	// Make client available to data sources, resources, and list resources
 	resp.DataSourceData = registryClient
@@ -121,4 +116,3 @@ func (p *RegistryProvider) DataSources(ctx context.Context) []func() datasource.
 		datasources.NewPolicyLibraryVersionsDataSource,
 	}
 }
-

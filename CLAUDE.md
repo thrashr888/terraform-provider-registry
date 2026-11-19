@@ -19,13 +19,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build the provider
 go build -o terraform-provider-registry
 
-# Run tests
+# Vet, lint and unit tests
+go vet ./...
+golangci-lint run ./...
 go test ./...
 
-# Run acceptance tests (requires TF_ACC=1)
-TF_ACC=1 go test ./... -v
+# Acceptance tests (call the live registry; need Terraform 1.14+ on PATH)
+TF_ACC=1 go test ./internal/acctest/... -v
 
-# Generate documentation
+# Generate documentation (tfplugindocs is pinned with the go.mod tool directive)
 go generate ./...
 
 # Install locally for testing
@@ -38,19 +40,18 @@ go install .
 terraform-provider-registry/
 ├── main.go                    # Provider entry point
 ├── internal/
-│   ├── provider/
-│   │   └── provider.go        # Provider configuration
-│   └── datasources/
-│       ├── provider.go        # registry_provider
-│       ├── provider_versions.go
-│       ├── provider_schema.go
-│       ├── module.go          # registry_module
-│       ├── module_versions.go
-│       ├── search.go          # registry_search
-│       ├── provider_docs.go   # registry_provider_docs
-│       └── policy_library.go  # registry_policy_library
-├── examples/                  # Example configurations
-├── docs/                      # Generated documentation
+│   ├── client/                # Shared HTTP client (timeout, User-Agent)
+│   ├── provider/              # Provider configuration and registration
+│   ├── datasources/           # registry_provider, _provider_versions, _provider_docs,
+│   │                          # _module, _module_versions, _search,
+│   │                          # _policy_library, _policy_library_versions
+│   ├── resources/             # Read-only, importable registry_provider,
+│   │                          # registry_module, registry_policy_library
+│   ├── listresources/         # List resources for Terraform 1.14+ list blocks
+│   └── acctest/               # Acceptance tests (TF_ACC=1)
+├── examples/                  # Example configurations (used by tfplugindocs)
+├── templates/                 # Doc templates
+├── docs/                      # Generated documentation (do not edit by hand)
 └── specs/                     # Specifications
 ```
 
@@ -60,19 +61,24 @@ terraform-provider-registry/
 |-------------|-------------|
 | `registry_provider` | Get provider details |
 | `registry_provider_versions` | List provider versions |
-| `registry_provider_schema` | Get resource/data source schemas |
+| `registry_provider_docs` | Get documentation (markdown) |
 | `registry_module` | Get module details |
 | `registry_module_versions` | List module versions |
 | `registry_search` | Search providers/modules |
-| `registry_provider_docs` | Get documentation (markdown) |
 | `registry_policy_library` | Get policy library info |
+| `registry_policy_library_versions` | List policy library versions |
+
+## Resources
+
+`registry_provider`, `registry_module` and `registry_policy_library` are read-only. Import IDs are `namespace/name` (module: `namespace/name/provider`), parsed by `parseImportID` in `internal/resources/import_id.go`.
 
 ## Development Workflow
 
-1. Make changes to data sources in `internal/datasources/`
-2. Run `go test ./...` to verify
+1. Make changes in `internal/`
+2. Run `go vet ./...`, `golangci-lint run ./...` and `go test ./...`
 3. Test manually with `terraform plan` in `examples/`
-4. Generate docs with `go generate ./...`
+4. Regenerate docs with `go generate ./...` and commit the result
+5. Build HTTP requests with `client.New` (via provider data), escape path segments and query values, and close response bodies with `defer func() { _ = resp.Body.Close() }()`
 
 ## Terraform Plugin Framework
 
@@ -118,10 +124,11 @@ bd dep add <issue> <depends-on>
 
 ## Release Process
 
-1. Tag release: `git tag v0.1.0`
-2. Push tags: `git push --tags`
-3. GoReleaser builds binaries
-4. Publish to Terraform Registry
+The provider is published on the Terraform Registry as `thrashr888/registry`.
+
+1. Tag a release on main: `git tag vX.Y.Z && git push origin vX.Y.Z` (Paul decides when)
+2. The Release workflow runs GoReleaser, which builds, signs and publishes the GitHub release
+3. The Terraform Registry picks up the new GitHub release automatically
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
