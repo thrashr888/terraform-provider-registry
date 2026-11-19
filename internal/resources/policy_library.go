@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -165,7 +164,8 @@ func (r *PolicyLibraryResource) Delete(ctx context.Context, req resource.DeleteR
 }
 
 func (r *PolicyLibraryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// Import ID is "namespace/name", e.g. "hashicorp/CIS-Policy-Set-for-AWS-Terraform".
+	importByID(ctx, req, resp, "namespace", "name")
 }
 
 func (r *PolicyLibraryResource) readPolicyLibrary(ctx context.Context, data *PolicyLibraryResourceModel) error {
@@ -187,7 +187,7 @@ func (r *PolicyLibraryResource) readPolicyLibrary(ctx context.Context, data *Pol
 	if err != nil {
 		return err
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)

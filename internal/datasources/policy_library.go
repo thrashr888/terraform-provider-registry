@@ -144,7 +144,7 @@ func (d *PolicyLibraryDataSource) Read(ctx context.Context, req datasource.ReadR
 		resp.Diagnostics.AddError("HTTP Error", err.Error())
 		return
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		resp.Diagnostics.AddError(
@@ -180,9 +180,9 @@ type PolicyLibraryAPIResponse struct {
 
 // PolicyLibraryData represents the data object in the response.
 type PolicyLibraryData struct {
-	Type       string                    `json:"type"`
-	ID         string                    `json:"id"`
-	Attributes PolicyLibraryAttributes   `json:"attributes"`
+	Type       string                  `json:"type"`
+	ID         string                  `json:"id"`
+	Attributes PolicyLibraryAttributes `json:"attributes"`
 }
 
 // PolicyLibraryAttributes represents the policy library attributes.

@@ -139,7 +139,7 @@ func (d *ProviderDataSource) Read(ctx context.Context, req datasource.ReadReques
 		resp.Diagnostics.AddError("HTTP Error", err.Error())
 		return
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		resp.Diagnostics.AddError(
@@ -181,4 +181,3 @@ type ProviderAPIResponse struct {
 	Downloads   int64    `json:"downloads"`
 	Versions    []string `json:"versions"`
 }
-

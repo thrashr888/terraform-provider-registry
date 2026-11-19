@@ -27,10 +27,10 @@ type PolicyLibraryVersionsDataSource struct {
 
 // PolicyLibraryVersionsDataSourceModel describes the data source data model.
 type PolicyLibraryVersionsDataSourceModel struct {
-	ID        types.String                        `tfsdk:"id"`
-	Namespace types.String                        `tfsdk:"namespace"`
-	Name      types.String                        `tfsdk:"name"`
-	Versions  []PolicyLibraryVersionModel         `tfsdk:"versions"`
+	ID        types.String                `tfsdk:"id"`
+	Namespace types.String                `tfsdk:"namespace"`
+	Name      types.String                `tfsdk:"name"`
+	Versions  []PolicyLibraryVersionModel `tfsdk:"versions"`
 }
 
 // PolicyLibraryVersionModel describes a single version.
@@ -147,7 +147,7 @@ func (d *PolicyLibraryVersionsDataSource) Read(ctx context.Context, req datasour
 		resp.Diagnostics.AddError("HTTP Error", err.Error())
 		return
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	if httpResp.StatusCode != http.StatusOK {
 		resp.Diagnostics.AddError(
